@@ -1,8 +1,11 @@
 ﻿using System;
+using System.IO;
+using System.Net;
 using Android.App;
 using Android.Content;
 using Android.OS;
 using Android.Webkit;
+using Newtonsoft.Json;
 using Sample.Constants;
 
 namespace Sample.Client.Droid
@@ -13,7 +16,7 @@ namespace Sample.Client.Droid
         private static readonly string AuthUrl =
             $"{SharedConstants.AuthorizationEndpoint}?client_id={SharedConstants.MobileClientId}&redirect_uri={Uri.EscapeDataString(SharedConstants.MobileRedirectUri)}&response_type=token&scope={SharedConstants.FooScope}";
 
-        protected override void OnCreate(Bundle bundle)
+        protected override async void OnCreate(Bundle bundle)
         {
             base.OnCreate(bundle);
 
@@ -21,24 +24,40 @@ namespace Sample.Client.Droid
             SetContentView(Resource.Layout.Main);
             WebView webView = FindViewById<WebView>(Resource.Id.webView);
 
-            if (Intent.Data?.Host == "mdepta.com")
+            //webView.Settings.JavaScriptEnabled = true;
+            //webView.SetWebViewClient(new MyWebViewClient(token =>
+            //{
+            //    var intent = new Intent(this, typeof (LoginSuccessActivity));
+            //    intent.PutExtra("token", token);
+            //    StartActivity(intent);
+            //}));
+
+            //webView.LoadUrl(AuthUrl);
+
+            var clientCredentials = "cmVzb3VyY2Vvd25lcmNsaWVudDpjbGllbnRzZWNyZXQ=";
+            var request = new HttpWebRequest(new Uri(SharedConstants.TokenEndpoint))
             {
-                var token = Intent.Data.GetQueryParameter("access_token");
-                webView.LoadData($"<html><body>{token}</body></html>", "text/html", null);
+                Method = "POST",
+                ContentType = "x-www-form-urlencoded"
+            };
+
+            request.Headers.Add(HttpRequestHeader.Authorization, $"Basic {clientCredentials}");
+
+            using (var stream = request.GetRequestStream())
+            using (var writer = new StreamWriter(stream))
+            {
+                writer.Write($"grant_type=password&scope={SharedConstants.FooScope}&username=Michal&password=password");
             }
-            else
+
+            var response = await request.GetResponseAsync();
+            using (var stream = response.GetResponseStream())
+            using (var reader = new StreamReader(stream))
             {
-                System.Diagnostics.Debug.WriteLine(Intent.DataString);
-
-                webView.Settings.JavaScriptEnabled = true;
-                webView.SetWebViewClient(new MyWebViewClient(token =>
-                {
-                    var intent = new Intent(this, typeof (LoginSuccessActivity));
-                    intent.PutExtra("token", token);
-                    StartActivity(intent);
-                }));
-
-                webView.LoadUrl(AuthUrl);
+                var json = reader.ReadToEnd();
+                var x = JsonConvert.DeserializeObject<AuthResponse>(json);
+                var intent = new Intent(this, typeof(LoginSuccessActivity));
+                intent.PutExtra("token", x.AccessToken);
+                StartActivity(intent);
             }
         }
 
@@ -68,6 +87,12 @@ namespace Sample.Client.Droid
 
                 return true;
             }
+        }
+
+        private class AuthResponse
+        {
+            [JsonProperty("access_token")]
+            public string AccessToken { get; set; }
         }
     }
 }
