@@ -30,7 +30,6 @@ namespace Sample.IdentityServer
                     IssuerUri = "https://michal/identity",
                     SigningCertificate = new X509Certificate2(
                         $"{AppDomain.CurrentDomain.BaseDirectory}\\Certificates\\idsrv3test.pfx", "idsrv3test")
-                    //PublicOrigin = ""
                 };
 
                 idServerApp.UseIdentityServer(options);
@@ -40,7 +39,7 @@ namespace Sample.IdentityServer
 
     public class MyClientStore : IClientStore
     {
-        private IEnumerable<Client> _clients = Clients.Get();
+        private readonly IEnumerable<Client> _clients = Clients.Get();
 
         public Task<Client> FindClientByIdAsync(string clientId)
         {

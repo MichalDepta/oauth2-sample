@@ -1,12 +1,11 @@
 ﻿using System;
-using System.IO;
-using System.Net;
 using Android.App;
-using Android.Content;
 using Android.OS;
 using Android.Webkit;
 using Newtonsoft.Json;
+using Refit;
 using Sample.Constants;
+using Debug = System.Diagnostics.Debug;
 
 namespace Sample.Client.Droid
 {
@@ -24,40 +23,16 @@ namespace Sample.Client.Droid
             SetContentView(Resource.Layout.Main);
             WebView webView = FindViewById<WebView>(Resource.Id.webView);
 
-            //webView.Settings.JavaScriptEnabled = true;
-            //webView.SetWebViewClient(new MyWebViewClient(token =>
-            //{
-            //    var intent = new Intent(this, typeof (LoginSuccessActivity));
-            //    intent.PutExtra("token", token);
-            //    StartActivity(intent);
-            //}));
-
-            //webView.LoadUrl(AuthUrl);
-
-            var clientCredentials = "cmVzb3VyY2Vvd25lcmNsaWVudDpjbGllbnRzZWNyZXQ=";
-            var request = new HttpWebRequest(new Uri(SharedConstants.TokenEndpoint))
+            try
             {
-                Method = "POST",
-                ContentType = "x-www-form-urlencoded"
-            };
+                var service = RestService.For<IAuthorizationService>(SharedConstants.TokenEndpoint);
+                var token = await service.Authorize(new UserCredentials("Michal", "password"));
 
-            request.Headers.Add(HttpRequestHeader.Authorization, $"Basic {clientCredentials}");
-
-            using (var stream = request.GetRequestStream())
-            using (var writer = new StreamWriter(stream))
-            {
-                writer.Write($"grant_type=password&scope={SharedConstants.FooScope}&username=Michal&password=password");
+                Debug.WriteLine(token);
             }
-
-            var response = await request.GetResponseAsync();
-            using (var stream = response.GetResponseStream())
-            using (var reader = new StreamReader(stream))
+            catch (Exception e)
             {
-                var json = reader.ReadToEnd();
-                var x = JsonConvert.DeserializeObject<AuthResponse>(json);
-                var intent = new Intent(this, typeof(LoginSuccessActivity));
-                intent.PutExtra("token", x.AccessToken);
-                StartActivity(intent);
+                Debug.WriteLine(e);
             }
         }
 
